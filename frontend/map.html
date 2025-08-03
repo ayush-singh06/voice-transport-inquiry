@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Bus Station Map (Google Maps + KML)</title>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <style>
+      #map { height: 90vh; width: 100%; border-radius: 12px; margin: 20px auto; }
+      body { font-family: 'Roboto', Arial, sans-serif; background: #f7f9fb; margin: 0; }
+      h1 { text-align: center; color: #1565c0; margin-top: 24px; }
+      #notification { 
+        position: fixed; 
+        top: 80px; 
+        left: 50%; 
+        transform: translateX(-50%); 
+        background: rgba(0,0,0,0.8); 
+        color: white; 
+        padding: 12px 20px; 
+        border-radius: 8px; 
+        z-index: 1000; 
+        display: none; 
+      }
+      .back-button {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: #1565c0;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        font-family: 'Roboto', Arial, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="index.html" class="back-button">← Back to Search</a>
+    <h1>Bus Station Map &amp; Platforms</h1>
+    <div id="notification"></div>
+    <div id="map"></div>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA0p9Fv2RABlr4AgT90DRDAg5G1R1PFQx4"></script>
+    <script>
+      function getQueryParam(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+      }
+
+      function initMap() {
+        var map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: 12.9716, lng: 77.5946},
+          zoom: 16
+        });
+        
+        var kmlLayer = new google.maps.KmlLayer({
+          url: 'https://raw.githubusercontent.com/ayush-singh06/map/refs/heads/main/bengaluru-bmtc-majestic-bus-stand-platform-routes-map.kml',
+          map: map,
+          preserveViewport: false
+        });
+
+        // Add click event listener to KML layer
+        kmlLayer.addListener('click', function(event) {
+          // Show notification with the name of the clicked feature
+          var notification = document.getElementById('notification');
+          notification.textContent = 'You clicked on ' + event.featureData.name;
+          notification.style.display = 'block';
+          
+          // Zoom to the clicked location
+          if (event.latLng) {
+            map.setCenter(event.latLng);
+            map.setZoom(18);
+          }
+          
+          // Hide notification after 3 seconds
+          setTimeout(function() {
+            notification.style.display = 'none';
+          }, 3000);
+        });
+
+        var targetPlatform = getQueryParam('platform');
+        if (targetPlatform) {
+          // Show notification to guide the user
+          var notification = document.getElementById('notification');
+          notification.textContent = 'Zooming to Platform ' + targetPlatform;
+          notification.style.display = 'block';
+          
+          // Fetch and parse the KML file to find the platform coordinates
+          fetch('https://raw.githubusercontent.com/ayush-singh06/map/refs/heads/main/bengaluru-bmtc-majestic-bus-stand-platform-routes-map.kml')
+            .then(response => response.text())
+            .then(kmlText => {
+              var parser = new DOMParser();
+              var kml = parser.parseFromString(kmlText, 'application/xml');
+              var placemarks = kml.getElementsByTagName('Placemark');
+              var found = false;
+              
+              for (var i = 0; i < placemarks.length; i++) {
+                var name = placemarks[i].getElementsByTagName('name')[0]?.textContent.trim();
+                if (name && name.toLowerCase() === ('platform ' + targetPlatform).toLowerCase()) {
+                  var coords = placemarks[i].getElementsByTagName('coordinates')[0]?.textContent.trim();
+                  if (coords) {
+                    var firstCoord = coords.split(/\s+/)[0];
+                    var [lng, lat] = firstCoord.split(',').map(Number);
+                    map.setCenter({lat: lat, lng: lng});
+                    map.setZoom(18);
+                    
+                    // Add a marker
+                    new google.maps.Marker({
+                      position: {lat: lat, lng: lng},
+                      map: map,
+                      title: name,
+                      animation: google.maps.Animation.DROP
+                    });
+                    
+                    found = true;
+                    notification.textContent = 'Platform ' + targetPlatform + ' found!';
+                    
+                    // Hide notification after 3 seconds
+                    setTimeout(function() {
+                      notification.style.display = 'none';
+                    }, 3000);
+                    
+                    break;
+                  }
+                }
+              }
+              
+              if (!found) {
+                notification.textContent = 'Platform ' + targetPlatform + ' not found. Please click on it manually.';
+                // Hide notification after 5 seconds
+                setTimeout(function() {
+                  notification.style.display = 'none';
+                }, 5000);
+              }
+            })
+            .catch(error => {
+              console.error('Error fetching KML:', error);
+              notification.textContent = 'Error loading map data. Please try again.';
+              // Hide notification after 5 seconds
+              setTimeout(function() {
+                notification.style.display = 'none';
+              }, 5000);
+            });
+        }
+      }
+      
+      // Initialize the map when the Google Maps API is loaded
+      google.maps.event.addDomListener(window, 'load', initMap);
+    </script>
+  </body>
+</html>
