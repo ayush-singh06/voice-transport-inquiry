@@ -54,7 +54,7 @@
         });
         
         var kmlLayer = new google.maps.KmlLayer({
-          url: 'https://raw.githubusercontent.com/ayush-singh06/map/refs/heads/main/bengaluru-bmtc-majestic-bus-stand-platform-routes-map.kml',
+          url: window.location.origin + '/bengaluru-bmtc-majestic-bus-stand-platform-routes-map.kml',
           map: map,
           preserveViewport: false
         });
@@ -86,7 +86,7 @@
           notification.style.display = 'block';
           
           // Fetch and parse the KML file to find the platform coordinates
-          fetch('https://raw.githubusercontent.com/ayush-singh06/map/refs/heads/main/bengaluru-bmtc-majestic-bus-stand-platform-routes-map.kml')
+          fetch(window.location.origin + '/bengaluru-bmtc-majestic-bus-stand-platform-routes-map.kml')
             .then(response => response.text())
             .then(kmlText => {
               var parser = new DOMParser();
