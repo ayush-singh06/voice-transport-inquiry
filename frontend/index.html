@@ -1,151 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BMTC Voice Inquiry</title>
-  <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
   <div class="container">
-    <h1><span class="brand">BMTC Voice Inquiry System</span></h1>
-    <div class="search-section">
-      <div class="dropdowns">
-        <label for="sourceSelect">Source:</label>
-        <select id="sourceSelect"></select>
-        <label for="destinationInput">Destination:</label>
-        <input list="destinationList" id="destinationInput" name="destinationInput" autocomplete="off" placeholder="Enter your destination" />
-        <datalist id="destinationList"></datalist>
-      </div>
-      <button id="searchButton" class="primary-btn">🔍 Search</button>
-    </div>
-    <button id="micButton" class="mic-btn">🎤 Ask About a Bus</button>
-    <p id="userQuery" class="hint">Say something like: <i>"Next bus from Majestic to Electronic City"</i></p>
-    <p id="result" class="result"></p>
+    <header class="header">
+      <div class="brand">BMTC Inquiry</div>
+      <button id="theme-toggle" aria-label="Toggle theme">🌙</button>
+    </header>
+
+    <main class="controls-container">
+      <!-- Text Search Section -->
+      <section class="search-section">
+        <h2>Search by Route</h2>
+        <div class="dropdowns">
+          <div>
+            <label for="sourceSelect">From:</label>
+            <select id="sourceSelect"></select>
+          </div>
+          <div>
+            <label for="destinationInput">To:</label>
+            <input list="destinationList" id="destinationInput" name="destinationInput" autocomplete="off" placeholder="Enter destination">
+            <datalist id="destinationList"></datalist>
+          </div>
+        </div>
+        <button id="searchButton" class="btn primary-btn">Search Buses</button>
+      </section>
+
+      <!-- Voice Search Section -->
+      <section class="voice-section">
+        <h2>Search by Voice</h2>
+        <button id="micButton" class="btn mic-btn">🎤 Ask About a Bus</button>
+      </section>
+
+      <!-- Results Display -->
+      <p id="userQuery" class="user-query">Say something like: "Next bus from Majestic to Electronic City"</p>
+      <div id="result" class="result">Your results will appear here.</div>
+
+      <!-- Map Link -->
+      <a href="map.html" target="_blank" class="btn primary-btn map-link">View Station Map</a>
+    </main>
   </div>
-  <script>
-    const micButton = document.getElementById('micButton');
-    const userQuery = document.getElementById('userQuery');
-    const result = document.getElementById('result');
 
-    micButton.addEventListener('click', () => {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-      recognition.lang = 'en-US';
-      recognition.start();
+  <!-- Info Button and Box -->
+  <div class="info-container">
+    <button class="info-btn" aria-label="Show info">i</button>
+    <div class="infobox" id="infobox">
+        <strong>About This Page</strong><br>
+        This is the BMTC Voice Inquiry System. Use the search options to find bus routes from Majestic to anywhere in Bengaluru, or view the map for station platforms.
+    </div>
+  </div>
 
-      recognition.onresult = async (event) => {
-        const transcript = event.results[0][0].transcript;
-        userQuery.innerText = `You said: "${transcript}"`;
-
-        try {
-          const response = await fetch('/query', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ query: transcript })
-          });
-          const data = await response.json();
-          if (data.answer.includes('Platform')) {
-            // Format the answer with clickable platform links
-            const formattedAnswer = formatAnswerWithLinks(data.answer);
-            result.innerHTML = `🟢 ${formattedAnswer}`;
-          } else {
-            result.innerText = `🟢 ${data.answer || "Sorry, I couldn't find any matching bus."}`;
-          }
-        } catch (err) {
-          result.innerText = '❌ Error contacting server.';
-          console.error(err);
-        }
-      };
-
-      recognition.onerror = (event) => {
-        result.innerText = '❌ Voice recognition error: ' + event.error;
-      };
-    });
-
-    async function populateStops() {
-      const res = await fetch('/stops');
-      const data = await res.json();
-      const sourceSelect = document.getElementById('sourceSelect');
-      data.sources.forEach(stop => {
-        const opt = document.createElement('option');
-        opt.value = opt.text = stop;
-        sourceSelect.appendChild(opt);
-      });
-      populateDestinations(data.destinations); // <-- Use this for datalist
-    }
-
-    function populateDestinations(destinations) {
-      const datalist = document.getElementById('destinationList');
-      datalist.innerHTML = '';
-      destinations.forEach(dest => {
-        const option = document.createElement('option');
-        option.value = dest;
-        datalist.appendChild(option);
-      });
-    }
-    populateStops();
-    document.getElementById('searchButton').onclick = async () => {
-      const source = document.getElementById('sourceSelect').value;
-      const destination = document.getElementById('destinationInput').value; // <-- Use input value
-      document.getElementById('userQuery').innerText = `Searching: ${source} to ${destination}`;
-      const response = await fetch('/query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: `from ${source} to ${destination}` })
-      });
-      const data = await response.json();
-      if (data.answer.includes('Platform')) {
-        // Format the answer with clickable platform links
-        const formattedAnswer = formatAnswerWithLinks(data.answer);
-        document.getElementById('result').innerHTML = `🟢 ${formattedAnswer}`;
-      } else {
-        document.getElementById('result').innerText = `🟢 ${data.answer}`;
-      }
-    };
-    function populateDestinations(destinations) {
-      const datalist = document.getElementById('destinationList');
-      datalist.innerHTML = '';
-      destinations.forEach(dest => {
-        const option = document.createElement('option');
-        option.value = dest;
-        datalist.appendChild(option);
-      });
-    }
-    // Call this function with your destinations array after fetching from backend
-    const destinationInput = document.getElementById('destinationInput');
-    const selectedDestination = destinationInput.value;
-    // Use selectedDestination in your search logic
-  </script>
-  <a href="map.html" class="primary-btn" style="margin-top:18px;display:inline-block;">View Station Map</a>
+  <script src="script.js"></script>
 </body>
 </html>
-<body>
-    <div class="info-container">
-        <button class="info-btn" onclick="toggleInfoBox()" aria-label="Show info">i</button>
-        <div class="infobox" id="infobox" style="display:none;">
-            <strong>About this Webpage</strong><br>
-            This is the BMTC Voice Inquiry System. Use the search box to find bus routes from Majestic to anywhere in Bengaluru, or view the map for station platforms. Powered by real-time data and voice search for your convenience.
-        </div>
-    </div>
-    <script>
-      function toggleInfoBox() {
-        var box = document.getElementById('infobox');
-        box.style.display = (box.style.display === 'none' || box.style.display === '') ? 'block' : 'none';
-      }
-      function displayResults(data) {
-        const resultDiv = document.createElement('div');
-        result.appendChild(resultDiv);
-      }
-      
-      // Function to format the answer with clickable platform links
-      function formatAnswerWithLinks(answer) {
-        // Replace "Platform X" with a link to the map
-        return answer.replace(/Platform (\d+)/g, function(match, platformNum) {
-          return `<a href="map.html?platform=${platformNum}" class="platform-link">Platform ${platformNum}</a>`;
-        });
-      }
-    </script>
-</body>
